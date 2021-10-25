@@ -1,0 +1,66 @@
+local JointStructure = {}
+JointStructure.__class = "JointStructure"
+JointStructure.__index = JointStructure
+
+local Joint = require(script.Parent.Joint);
+
+function JointStructure.new(jointPositions, drawParams)
+    assert(type(jointPositions) == "table", "jointPositions must be an array of Vector3s")
+    assert(#jointPositions >= 2, "length of jointPositions must be at least 2")
+
+    if (drawParams) then
+        drawParams:Check()
+    end
+
+    local self = {
+        _joints = {};
+        _attachments = {};
+        _drawParams = drawParams;
+    }
+
+    for i = #jointPositions, 1, -1 do
+        local position = jointPositions[i]
+        local parent = self._joints[i + 1]
+        self._joints[i] = Joint.new(position, parent)
+    end
+
+    if (self._drawParams) then
+        for i = 1, #self._joints do
+            local attachment = Instance.new("Attachment")
+            attachment.Parent = self._drawParams.Part
+            self._attachments[i] = attachment
+        end
+        
+        self:UpdateAttachments()
+    end
+
+    setmetatable(self, JointStructure)
+
+    return self
+end
+
+function JointStructure:UpdateAttachments()
+    for i = 1, #self._attachments do
+        self._attachments[i].WorldPosition = self._joints[i]:GetPosition()
+    end
+end
+
+function JointStructure:Draw()
+    assert(self._drawParams, "Specify DrawParams when initializing to use JointStructure:Draw()")
+
+    self:UpdateAttachments()
+end
+
+function JointStructure:GetFirstJoint()
+    return self._joints[1]
+end
+
+function JointStructure:GetLastJoint()
+    return self._joints[#self._joints]
+end
+
+function JointStructure:GetJoint(n)
+    return self._joints[n]
+end
+
+return JointStructure
