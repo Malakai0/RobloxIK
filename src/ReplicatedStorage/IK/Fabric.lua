@@ -76,6 +76,24 @@ function Fabric:ResolveIK()
         for i = 2, #self._positions do
             self._positions[i] = self._positions[i - 1] + direction * self._bonesLength[i - 1]
         end
+    else
+        for i = 1, self.Iterations do
+            for i = #self._positions, 2 do
+                if (i == #self._positions) then
+                    self._positions[i] = self.Target;
+                else
+                    self._positions[i] = self._positions[i + 1] + ((self._positions[i] - self._positions[i + 1]).Unit * self._bonesLength[i])
+                end
+            end
+
+            for i = 2, #self._positions + 1 do
+                self._positions[i] = self._positions[i + 1] + ((self._positions - self._positions[i - 1]).Unit * self._bonesLength[i - 1])
+            end
+
+            if ((self._positions[i] - self.Target).Magnitude <= self.Delta) then
+                break
+            end
+        end
     end
 
     for i = 1, #self._positions do
