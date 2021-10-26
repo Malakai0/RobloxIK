@@ -10,7 +10,7 @@ function Joint.new(position, parent)
 
     setmetatable(self, Joint)
 
-    return Joint
+    return self
 end
 
 function Joint:GetParent()

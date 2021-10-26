@@ -1,11 +1,40 @@
+local PolicyService = game:GetService("PolicyService")
 local Fabric = {}
 Fabric.__class = "Fabric"
 Fabric.__index = Fabric
 
-local Bone = require(script.Parent.Bone)
 local Signal = require(script.Parent.Signal)
 
-function Fabric.new(JointStructure, Target, Pole, Iterations, Delta, SnapStrength)
+local function Round(num, dp)
+    local mult = 10^(dp or 0)
+    return math.floor(num * mult + 0.5)/mult
+end
+
+function RoundVector(vec, dp)
+    return Vector3.new(Round(vec.X, dp), Round(vec.Y, dp), Round(vec.Z, dp))
+end
+
+local function Angle(from, to)
+    local denominator = (from - to).Magnitude
+    if (denominator < 1e-05) then
+        return 0
+    end
+
+    local dot = math.clamp(from:Dot(to) / denominator, -1, 1)
+    return math.deg(math.acos(dot))
+end
+
+local function SignedAngle(from, to, axis)
+    local cross = from:Cross(to)
+    return Angle(from, to) * math.sign(axis.X * cross.X + axis.Y * cross.Y + axis.Z * cross.Z)
+end
+
+local function ClosestPointOnPlane(normal, distance, point)
+    local pointToPlaneDistance = Round(normal:Dot(point) + distance, 2)
+    return point - (normal * pointToPlaneDistance)
+end
+
+function Fabric.new(JointStructure, Target, Pole, Iterations, Delta)
     local self = {
         --// Main parameters
         ChainLength = JointStructure:GetLength();
@@ -15,8 +44,7 @@ function Fabric.new(JointStructure, Target, Pole, Iterations, Delta, SnapStrengt
         --// Solver parameters
         Iterations = Iterations;
         Delta = Delta;
-        SnapBackStrength = SnapStrength;
-
+        
         --// Protected parameters
         _bonesLength = {};
         _completeLength = 0;
@@ -33,6 +61,7 @@ function Fabric.new(JointStructure, Target, Pole, Iterations, Delta, SnapStrengt
     }
 
     setmetatable(self, Fabric)
+
     self:Init()
 
     return self
@@ -45,14 +74,12 @@ function Fabric:Init()
     for i = self.ChainLength, 1, -1 do
         self._bones[i] = Current
 
-        if (i == self.ChainLength) then
-            
-        else
+        if (i ~= self.ChainLength) then
             self._bonesLength[i] = (self._bones[i + 1]:GetPosition() - Current:GetPosition()).Magnitude
             self._completeLength += self._bonesLength[i]
         end
 
-        Current = Current.Parent
+        Current = Current:GetParent()
     end
 
     self.OnInit:Fire()
@@ -63,7 +90,7 @@ function Fabric:ResolveIK()
         return
     end
 
-    if (not #self._bonesLength ~= self.ChainLength) then
+    if (#self._bonesLength ~= self.ChainLength - 1) then
         self:Init()
     end
 
@@ -78,7 +105,11 @@ function Fabric:ResolveIK()
         end
     else
         for i = 1, self.Iterations do
-            for i = #self._positions, 2 do
+            if ((self._positions[#self._positions] - self.Target).Magnitude <= self.Delta) then
+                break
+            end
+
+            for i = #self._positions, 2, -1 do
                 if (i == #self._positions) then
                     self._positions[i] = self.Target;
                 else
@@ -86,14 +117,30 @@ function Fabric:ResolveIK()
                 end
             end
 
-            for i = 2, #self._positions + 1 do
-                self._positions[i] = self._positions[i + 1] + ((self._positions - self._positions[i - 1]).Unit * self._bonesLength[i - 1])
+            for i = 2, #self._positions do
+                self._positions[i] = self._positions[i - 1] + ((self._positions[i] - self._positions[i - 1]).Unit * self._bonesLength[i - 1])
             end
 
-            if ((self._positions[i] - self.Target).Magnitude <= self.Delta) then
+            if ((self._positions[#self._positions] - self.Target).Magnitude <= self.Delta) then
                 break
             end
         end
+    end
+
+    if (self.Pole) then
+        --TODO: Fix weird spinny bug.
+        --[[
+        for i = 2, #self._positions - 1 do
+            local normal = (self._positions[i + 1] - self._positions[i - 1]).Unit
+            local distance = -normal:Dot(self._positions[i - 1])
+            
+            local projectedPole = RoundVector(ClosestPointOnPlane(normal, distance, self.Pole), 2)
+            local projectedBone = RoundVector(ClosestPointOnPlane(normal, distance, self._positions[i]), 2)
+
+            local angle = Angle(projectedBone - self._positions[i - 1], projectedPole - self._positions[i - 1])
+            
+            self._positions[i] = CFrame.fromAxisAngle(normal, math.rad(angle)) * (self._positions[i] - self._positions[i - 1]) + self._positions[i - 1]
+        end]]
     end
 
     for i = 1, #self._positions do

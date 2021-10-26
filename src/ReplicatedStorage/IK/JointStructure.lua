@@ -13,25 +13,27 @@ function JointStructure.new(jointPositions, drawParams)
     end
 
     local self = {
+        _originalPositions = {};
         _joints = {};
         _attachments = {};
         _drawParams = drawParams;
     }
 
-    for i = #jointPositions, 1, -1 do
+    for i = 1, #jointPositions do
         local position = jointPositions[i]
-        local parent = self._joints[i + 1]
+        local parent = self._joints[i - 1]
         self._joints[i] = Joint.new(position, parent)
     end
 
     if (self._drawParams) then
         for i = 1, #self._joints do
             local attachment = Instance.new("Attachment")
+            attachment.Visible = true
             attachment.Parent = self._drawParams.Part
             self._attachments[i] = attachment
         end
-        
-        self:UpdateAttachments()
+
+        JointStructure.UpdateAttachments(self)
     end
 
     setmetatable(self, JointStructure)
@@ -41,7 +43,7 @@ end
 
 function JointStructure:UpdateAttachments()
     for i = 1, #self._attachments do
-        self._attachments[i].WorldPosition = self._joints[i]:GetPosition()
+        self._attachments[i].WorldPosition = self._drawParams.Part.Position + self._joints[i]:GetPosition()
     end
 end
 
@@ -61,6 +63,10 @@ end
 
 function JointStructure:GetJoint(n)
     return self._joints[n]
+end
+
+function JointStructure:GetLength()
+    return #self._joints;
 end
 
 return JointStructure
