@@ -42,8 +42,9 @@ function JointStructure.new(jointPositions, drawParams)
 end
 
 function JointStructure:UpdateAttachments()
+    local partCFrame = self._drawParams.Part.CFrame;
     for i = 1, #self._attachments do
-        self._attachments[i].WorldPosition = self._drawParams.Part.Position + self._joints[i]:GetPosition()
+        self._attachments[i].Position = partCFrame:PointToObjectSpace(partCFrame * self._joints[i]:GetPosition())
     end
 end
 

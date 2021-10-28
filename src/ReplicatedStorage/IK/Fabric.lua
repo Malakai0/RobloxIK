@@ -1,4 +1,3 @@
-local PolicyService = game:GetService("PolicyService")
 local Fabric = {}
 Fabric.__class = "Fabric"
 Fabric.__index = Fabric
@@ -94,8 +93,10 @@ function Fabric:ResolveIK()
         self:Init()
     end
 
+    local previousPositions = {}
     for i = 1, #self._bones do
         self._positions[i] = self._bones[i]:GetPosition()
+        previousPositions[i] = self._positions[i]
     end
 
     if ((self.Target - self._bones[1]:GetPosition()).Magnitude >= self._completeLength) then

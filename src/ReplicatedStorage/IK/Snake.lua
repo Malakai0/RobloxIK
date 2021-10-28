@@ -12,6 +12,8 @@ function Snake.new(fabric, target)
     local body = Instance.new('Model')
     for i = 1, fabric.ChainLength - 1 do
         local part = Instance.new('Part')
+        part.CanCollide = false
+        part.Anchored = true
         part.Parent = body
         self._parts[i] = part
     end
@@ -29,7 +31,7 @@ end
 
 function Snake:_init()
     game:GetService("RunService").Heartbeat:Connect(function()
-        self._fabric.Target = self._target.Position - self._fabric._structure._drawParams.Part.Position
+        self._fabric.Target = self._fabric._structure._drawParams.Part.CFrame:PointToObjectSpace(self._target.Position)
         self._fabric:Update()
         self._fabric:Draw()
     end)
@@ -37,10 +39,12 @@ end
 
 function Snake:_update()
     for i = 1, #self._parts do
-        local length = self._fabric._bonesLength[i]
-        local nextPos = self._fabric._positions[i + 1]
+        local nextAttachment = self._fabric._structure._attachments[i + 1]
 
-        local direction = (nextPos - self._fabric._positions[i]).Unit
+        local attachmentLength =  (nextAttachment.WorldPosition - self._fabric._structure._attachments[i].WorldPosition)
+        local attachmentDirection = attachmentLength.Unit
+
+        local boneLength = self._fabric._bonesLength[i]
 
         local part = self._parts[i]
         if (part.Parent == nil) then
@@ -51,10 +55,11 @@ function Snake:_update()
             part = self._parts[i]
         end
 
-        local origin = CFrame.new(self._fabric._structure._attachments[1].WorldPosition) * CFrame.new(self._fabric._completeLength / 2, 0, 0)
+        local p = self._fabric._structure._attachments[i].WorldPosition
+        local origin = CFrame.new(p, p + attachmentDirection)
 
-        part.Size = Vector3.new(1, 1, length)
-        part.CFrame = origin * (CFrame.new(self._fabric._positions[i], self._fabric._positions[i] + direction) * CFrame.new(0, 0, -length / 2))
+        part.Size = Vector3.new(1, 1, boneLength)
+        part.CFrame = origin * CFrame.new(0, 0, -boneLength / 2)
     end
     self.body.Parent = workspace
 end
