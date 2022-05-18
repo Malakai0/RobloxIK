@@ -15,7 +15,7 @@ local Increment = 10
 
 local offsets = {}
 for i = 0, -SnakeLength, -Increment do
-    table.insert(offsets, part.CFrame:PointToObjectSpace( (part.CFrame * CFrame.new(0, 0, -i)).Position ))
+    table.insert(offsets, part.CFrame:PointToObjectSpace( (part.CFrame * CFrame.new(0, 0, i)).Position ))
 end
 
 local structure = jointStructure.new(offsets, params)
